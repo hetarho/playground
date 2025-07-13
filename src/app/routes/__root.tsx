@@ -14,6 +14,9 @@ export const Route = createRootRoute({
         <Link to="/canvas" className="[&.active]:font-bold">
           Canvas
         </Link>
+        <Link to="/wave" className="[&.active]:font-bold">
+          Wave
+        </Link>
       </div>
       <Outlet />
       <TanStackRouterDevtools />
