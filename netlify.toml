@@ -1,0 +1,28 @@
+# Netlify 배포 설정
+[build]
+  # 빌드 명령어
+  command = "npm run build"
+  # 배포할 디렉토리
+  publish = "dist"
+
+# SPA 라우팅을 위한 리다이렉트 설정
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# 빌드 최적화 설정
+[build.environment]
+  NODE_VERSION = "22"
+  NPM_VERSION = "10"
+
+# 에러 페이지 최적화
+[build.processing]
+  skip_processing = false
+
+[build.processing.html]
+  pretty_urls = true
+
+# 함수 설정 (향후 사용 시)
+[functions]
+  node_bundler = "esbuild" 
