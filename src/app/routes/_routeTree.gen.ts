@@ -9,14 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './__root'
-import { Route as WaveRouteImport } from './wave'
+import { Route as ThreeRouteImport } from './three'
 import { Route as CanvasRouteImport } from './canvas'
 import { Route as AboutRouteImport } from './about'
 import { Route as IndexRouteImport } from './index'
 
-const WaveRoute = WaveRouteImport.update({
-  id: '/wave',
-  path: '/wave',
+const ThreeRoute = ThreeRouteImport.update({
+  id: '/three',
+  path: '/three',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CanvasRoute = CanvasRouteImport.update({
@@ -39,43 +39,43 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/canvas': typeof CanvasRoute
-  '/wave': typeof WaveRoute
+  '/three': typeof ThreeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/canvas': typeof CanvasRoute
-  '/wave': typeof WaveRoute
+  '/three': typeof ThreeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/canvas': typeof CanvasRoute
-  '/wave': typeof WaveRoute
+  '/three': typeof ThreeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/canvas' | '/wave'
+  fullPaths: '/' | '/about' | '/canvas' | '/three'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/canvas' | '/wave'
-  id: '__root__' | '/' | '/about' | '/canvas' | '/wave'
+  to: '/' | '/about' | '/canvas' | '/three'
+  id: '__root__' | '/' | '/about' | '/canvas' | '/three'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   CanvasRoute: typeof CanvasRoute
-  WaveRoute: typeof WaveRoute
+  ThreeRoute: typeof ThreeRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/wave': {
-      id: '/wave'
-      path: '/wave'
-      fullPath: '/wave'
-      preLoaderRoute: typeof WaveRouteImport
+    '/three': {
+      id: '/three'
+      path: '/three'
+      fullPath: '/three'
+      preLoaderRoute: typeof ThreeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/canvas': {
@@ -106,7 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   CanvasRoute: CanvasRoute,
-  WaveRoute: WaveRoute,
+  ThreeRoute: ThreeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

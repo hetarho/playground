@@ -14,8 +14,8 @@ export const Route = createRootRoute({
         <Link to="/canvas" className="[&.active]:font-bold">
           Canvas
         </Link>
-        <Link to="/wave" className="[&.active]:font-bold">
-          Wave
+        <Link to="/three" className="[&.active]:font-bold">
+          Three
         </Link>
       </div>
       <div className="w-full flex-1 bg-black">
