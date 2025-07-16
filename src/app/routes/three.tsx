@@ -42,7 +42,7 @@ function ThreePage() {
       onScroll: (targetZ: number) => {
         setPosition((prev) => ({ ...prev, target: targetZ }));
       },
-      onPositionChange: (x: number, y: number, z: number) => {
+      onPositionChange: (_x: number, _y: number, z: number) => {
         setPosition((prev) => ({ ...prev, current: z }));
       },
     };
