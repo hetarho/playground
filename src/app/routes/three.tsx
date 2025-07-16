@@ -12,9 +12,17 @@ function ThreePage() {
   const scrollableSpaceRef = useRef<ScrollableSpace | null>(null);
   const [position, setPosition] = useState({ current: 10, target: 10 });
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
+
+    // 모바일 감지
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768 || 'ontouchstart' in window);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
 
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
@@ -54,6 +62,7 @@ function ThreePage() {
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", checkMobile);
       scrollableSpaceRef.current?.destroy();
     };
   }, []);
@@ -89,14 +98,20 @@ function ThreePage() {
           <div className="text-xs space-y-1">
             <div>현재 위치: {position.current.toFixed(1)}</div>
             <div>목표 위치: {position.target.toFixed(1)}</div>
-            <div className="text-gray-300 mt-2">마우스 휠로 앞뒤 이동</div>
+                          <div className="text-gray-300 mt-2">
+                {isMobile ? "터치해서 위아래로 드래그" : "마우스 휠로 앞뒤 이동"}
+              </div>
           </div>
         </div>
 
         <div className="bg-black bg-opacity-50 p-3 rounded-lg space-y-2">
           <button
             onClick={handleResetPosition}
-            className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
+            className={`w-full px-3 rounded text-sm transition-colors ${
+              isMobile 
+                ? "py-3 bg-blue-600 active:bg-blue-800" 
+                : "py-1 bg-blue-600 hover:bg-blue-700"
+            }`}
           >
             원점으로 복귀
           </button>
@@ -104,13 +119,21 @@ function ThreePage() {
           <div className="flex gap-1">
             <button
               onClick={() => handleSetPosition(-20)}
-              className="flex-1 px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs transition-colors"
+              className={`flex-1 px-2 rounded transition-colors ${
+                isMobile
+                  ? "py-3 bg-red-600 active:bg-red-800 text-sm"
+                  : "py-1 bg-red-600 hover:bg-red-700 text-xs"
+              }`}
             >
               뒤로
             </button>
             <button
               onClick={() => handleSetPosition(30)}
-              className="flex-1 px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs transition-colors"
+              className={`flex-1 px-2 rounded transition-colors ${
+                isMobile
+                  ? "py-3 bg-green-600 active:bg-green-800 text-sm"
+                  : "py-1 bg-green-600 hover:bg-green-700 text-xs"
+              }`}
             >
               앞으로
             </button>

@@ -17,6 +17,12 @@ export class ScrollableSpace {
 
   private animationId: number | null = null;
   private boundScrollHandler: (event: WheelEvent) => void;
+  private boundTouchStartHandler: (event: TouchEvent) => void;
+  private boundTouchMoveHandler: (event: TouchEvent) => void;
+  private boundTouchEndHandler: (event: TouchEvent) => void;
+  
+  private touchStartY: number = 0;
+  private isTouching: boolean = false;
 
   constructor(
     options: ScrollableSpaceOptions,
@@ -41,8 +47,11 @@ export class ScrollableSpace {
       isAnimating: false,
     };
 
-    this.boundScrollHandler = this.handleScroll.bind(this);
-
+        this.boundScrollHandler = this.handleScroll.bind(this);
+    this.boundTouchStartHandler = this.handleTouchStart.bind(this);
+    this.boundTouchMoveHandler = this.handleTouchMove.bind(this);
+    this.boundTouchEndHandler = this.handleTouchEnd.bind(this);
+    
     this.init();
   }
 
@@ -137,6 +146,15 @@ export class ScrollableSpace {
     this.canvas.addEventListener("wheel", this.boundScrollHandler, {
       passive: false,
     });
+    this.canvas.addEventListener("touchstart", this.boundTouchStartHandler, {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchmove", this.boundTouchMoveHandler, {
+      passive: false,
+    });
+    this.canvas.addEventListener("touchend", this.boundTouchEndHandler, {
+      passive: false,
+    });
   }
 
   private handleScroll(event: WheelEvent): void {
@@ -150,6 +168,39 @@ export class ScrollableSpace {
     );
 
     this.events.onScroll?.(this.state.targetZ);
+  }
+
+  private handleTouchStart(event: TouchEvent): void {
+    event.preventDefault();
+    
+    if (event.touches.length === 1) {
+      this.isTouching = true;
+      this.touchStartY = event.touches[0].clientY;
+    }
+  }
+
+  private handleTouchMove(event: TouchEvent): void {
+    if (!this.isTouching || event.touches.length !== 1) return;
+    
+    event.preventDefault();
+    
+    const currentY = event.touches[0].clientY;
+    const deltaY = this.touchStartY - currentY;
+    const delta = deltaY * this.options.scrollSensitivity * 0.5; // 터치는 조금 더 민감하게
+    
+    this.state.targetZ = THREE.MathUtils.clamp(
+      this.state.targetZ + delta,
+      this.options.minZ,
+      this.options.maxZ
+    );
+    
+    this.touchStartY = currentY; // 연속적인 이동을 위해 업데이트
+    this.events.onScroll?.(this.state.targetZ);
+  }
+
+  private handleTouchEnd(event: TouchEvent): void {
+    event.preventDefault();
+    this.isTouching = false;
   }
 
   private updateCameraPosition(): void {
@@ -223,6 +274,9 @@ export class ScrollableSpace {
   public destroy(): void {
     // 이벤트 리스너 제거
     this.canvas.removeEventListener("wheel", this.boundScrollHandler);
+    this.canvas.removeEventListener("touchstart", this.boundTouchStartHandler);
+    this.canvas.removeEventListener("touchmove", this.boundTouchMoveHandler);
+    this.canvas.removeEventListener("touchend", this.boundTouchEndHandler);
 
     // 애니메이션 루프 중단
     if (this.animationId) {
