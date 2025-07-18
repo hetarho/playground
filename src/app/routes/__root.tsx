@@ -17,6 +17,9 @@ export const Route = createRootRoute({
         <Link to="/three" className="[&.active]:font-bold">
           Three
         </Link>
+        <Link to="/metaball" className="[&.active]:font-bold">
+          Metaball
+        </Link>
       </div>
       <div className="w-full flex-1 bg-black">
         <Outlet />

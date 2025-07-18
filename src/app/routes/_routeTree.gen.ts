@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './__root'
 import { Route as ThreeRouteImport } from './three'
+import { Route as MetaballRouteImport } from './metaball'
 import { Route as CanvasRouteImport } from './canvas'
 import { Route as AboutRouteImport } from './about'
 import { Route as IndexRouteImport } from './index'
@@ -17,6 +18,11 @@ import { Route as IndexRouteImport } from './index'
 const ThreeRoute = ThreeRouteImport.update({
   id: '/three',
   path: '/three',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MetaballRoute = MetaballRouteImport.update({
+  id: '/metaball',
+  path: '/metaball',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CanvasRoute = CanvasRouteImport.update({
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/canvas': typeof CanvasRoute
+  '/metaball': typeof MetaballRoute
   '/three': typeof ThreeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/canvas': typeof CanvasRoute
+  '/metaball': typeof MetaballRoute
   '/three': typeof ThreeRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/canvas': typeof CanvasRoute
+  '/metaball': typeof MetaballRoute
   '/three': typeof ThreeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/canvas' | '/three'
+  fullPaths: '/' | '/about' | '/canvas' | '/metaball' | '/three'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/canvas' | '/three'
-  id: '__root__' | '/' | '/about' | '/canvas' | '/three'
+  to: '/' | '/about' | '/canvas' | '/metaball' | '/three'
+  id: '__root__' | '/' | '/about' | '/canvas' | '/metaball' | '/three'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   CanvasRoute: typeof CanvasRoute
+  MetaballRoute: typeof MetaballRoute
   ThreeRoute: typeof ThreeRoute
 }
 
@@ -76,6 +86,13 @@ declare module '@tanstack/react-router' {
       path: '/three'
       fullPath: '/three'
       preLoaderRoute: typeof ThreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/metaball': {
+      id: '/metaball'
+      path: '/metaball'
+      fullPath: '/metaball'
+      preLoaderRoute: typeof MetaballRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/canvas': {
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   CanvasRoute: CanvasRoute,
+  MetaballRoute: MetaballRoute,
   ThreeRoute: ThreeRoute,
 }
 export const routeTree = rootRouteImport
