@@ -52,6 +52,8 @@ export interface UseCanvasOptions {
   // 초기화 옵션
   pixelRatio?: number; // 기본값: window.devicePixelRatio
   backgroundColor?: string; // 배경색
+  // 모드: '2d'는 2D 컨텍스트/사이즈를 관리, '3d'는 컨텍스트/사이즈를 건드리지 않고 리스너와 리사이즈 관찰만 수행(WebGL 등 외부가 관리)
+  mode?: "2d" | "3d";
 }
 
 // useCanvas 훅의 반환 타입
@@ -78,6 +80,7 @@ export function useCanvas(options: UseCanvasOptions = {}): UseCanvasReturn {
     onAnimationFrame,
     pixelRatio = typeof window !== "undefined" ? window.devicePixelRatio : 1,
     backgroundColor,
+    mode = "2d",
   } = options;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,19 +146,21 @@ export function useCanvas(options: UseCanvasOptions = {}): UseCanvasReturn {
     const width = rect.width;
     const height = rect.height;
 
-    // 실제 픽셀 크기 설정
-    canvas.width = width * pixelRatio;
-    canvas.height = height * pixelRatio;
+    if (mode === "2d") {
+      // 실제 픽셀 크기 설정
+      canvas.width = width * pixelRatio;
+      canvas.height = height * pixelRatio;
 
-    // CSS 크기는 그대로 유지
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
+      // CSS 크기는 그대로 유지
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
 
-    // Context 스케일 조정
-    const context = canvas.getContext("2d");
-    if (context) {
-      context.scale(pixelRatio, pixelRatio);
-      setCtx(context);
+      // Context 스케일 조정
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.scale(pixelRatio, pixelRatio);
+        setCtx(context);
+      }
     }
 
     setDimensions((prev) => {
@@ -166,12 +171,15 @@ export function useCanvas(options: UseCanvasOptions = {}): UseCanvasReturn {
     });
     onResize?.(width, height);
 
-    // 배경색 적용
-    if (backgroundColor && context) {
-      context.fillStyle = backgroundColor;
-      context.fillRect(0, 0, width, height);
+    // 배경색 적용 (2D 모드에서만)
+    if (mode === "2d") {
+      const context = canvas.getContext("2d");
+      if (backgroundColor && context) {
+        context.fillStyle = backgroundColor;
+        context.fillRect(0, 0, width, height);
+      }
     }
-  }, [pixelRatio, backgroundColor, onResize]);
+  }, [pixelRatio, backgroundColor, onResize, mode]);
 
   // 마우스/터치 이벤트 핸들러
   const handleMouseDown = useCallback(
@@ -273,7 +281,7 @@ export function useCanvas(options: UseCanvasOptions = {}): UseCanvasReturn {
 
   // 애니메이션 루프
   const animate = useCallback(() => {
-    if (!ctx || !canvasRef.current) return;
+    if (mode !== "2d" || !ctx || !canvasRef.current) return;
 
     onAnimationFrame?.(
       ctx,
@@ -283,7 +291,7 @@ export function useCanvas(options: UseCanvasOptions = {}): UseCanvasReturn {
     );
 
     animationIdRef.current = requestAnimationFrame(animate);
-  }, [ctx, dimensions, onAnimationFrame]);
+  }, [ctx, dimensions, onAnimationFrame, mode]);
 
   // 초기화 및 이벤트 리스너 설정
   useEffect(() => {
@@ -341,7 +349,7 @@ export function useCanvas(options: UseCanvasOptions = {}): UseCanvasReturn {
 
   // 애니메이션 프레임 시작/중지
   useEffect(() => {
-    if (onAnimationFrame && ctx) {
+    if (mode === "2d" && onAnimationFrame && ctx) {
       animationIdRef.current = requestAnimationFrame(animate);
     }
 
@@ -350,7 +358,7 @@ export function useCanvas(options: UseCanvasOptions = {}): UseCanvasReturn {
         cancelAnimationFrame(animationIdRef.current);
       }
     };
-  }, [animate, ctx, onAnimationFrame]);
+  }, [animate, ctx, onAnimationFrame, mode]);
 
   return {
     canvasRef,

@@ -129,7 +129,8 @@ class Point {
       this.y > this.centerY + this.amplitude ||
       this.y < this.centerY - this.amplitude
     ) {
-      this.direction = this.direction * -1;
+      if (this.y > this.centerY + this.amplitude) this.direction = -1;
+      else this.direction = 1;
       this.speed = Math.random() * 2 + 0.5 * this.seedSpeed;
     }
   }
