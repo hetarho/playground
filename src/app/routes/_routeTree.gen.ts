@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './__root'
 import { Route as ThreeRouteImport } from './three'
+import { Route as Metaball2RouteImport } from './metaball2'
 import { Route as MetaballRouteImport } from './metaball'
 import { Route as GiltBronzeIncenseBurnerRouteImport } from './gilt-bronze-incense-burner'
 import { Route as CanvasRouteImport } from './canvas'
@@ -19,6 +20,11 @@ import { Route as IndexRouteImport } from './index'
 const ThreeRoute = ThreeRouteImport.update({
   id: '/three',
   path: '/three',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Metaball2Route = Metaball2RouteImport.update({
+  id: '/metaball2',
+  path: '/metaball2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MetaballRoute = MetaballRouteImport.update({
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/canvas': typeof CanvasRoute
   '/gilt-bronze-incense-burner': typeof GiltBronzeIncenseBurnerRoute
   '/metaball': typeof MetaballRoute
+  '/metaball2': typeof Metaball2Route
   '/three': typeof ThreeRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/canvas': typeof CanvasRoute
   '/gilt-bronze-incense-burner': typeof GiltBronzeIncenseBurnerRoute
   '/metaball': typeof MetaballRoute
+  '/metaball2': typeof Metaball2Route
   '/three': typeof ThreeRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/canvas': typeof CanvasRoute
   '/gilt-bronze-incense-burner': typeof GiltBronzeIncenseBurnerRoute
   '/metaball': typeof MetaballRoute
+  '/metaball2': typeof Metaball2Route
   '/three': typeof ThreeRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/canvas'
     | '/gilt-bronze-incense-burner'
     | '/metaball'
+    | '/metaball2'
     | '/three'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/canvas'
     | '/gilt-bronze-incense-burner'
     | '/metaball'
+    | '/metaball2'
     | '/three'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/canvas'
     | '/gilt-bronze-incense-burner'
     | '/metaball'
+    | '/metaball2'
     | '/three'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   CanvasRoute: typeof CanvasRoute
   GiltBronzeIncenseBurnerRoute: typeof GiltBronzeIncenseBurnerRoute
   MetaballRoute: typeof MetaballRoute
+  Metaball2Route: typeof Metaball2Route
   ThreeRoute: typeof ThreeRoute
 }
 
@@ -115,6 +128,13 @@ declare module '@tanstack/react-router' {
       path: '/three'
       fullPath: '/three'
       preLoaderRoute: typeof ThreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/metaball2': {
+      id: '/metaball2'
+      path: '/metaball2'
+      fullPath: '/metaball2'
+      preLoaderRoute: typeof Metaball2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/metaball': {
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   CanvasRoute: CanvasRoute,
   GiltBronzeIncenseBurnerRoute: GiltBronzeIncenseBurnerRoute,
   MetaballRoute: MetaballRoute,
+  Metaball2Route: Metaball2Route,
   ThreeRoute: ThreeRoute,
 }
 export const routeTree = rootRouteImport
