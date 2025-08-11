@@ -130,17 +130,55 @@ export default function MetaBall2Step1() {
       precision mediump float;
       in vec2 vUv;                    // 버텍스에서 넘어온 보간된 UV([0,1])
       uniform float uTime;            // 시간(초)
-      uniform vec2 uCenter;           // 원 중심(uv 좌표계 [0,1])
+      uniform vec2 uCenter1;          // 왼쪽 원 중심(uv 좌표계 [0,1])
+      uniform vec2 uCenter2;          // 오른쪽 원 중심(uv 좌표계 [0,1])
+      uniform vec2 uCenter3;          // 추가 원 중심
+      uniform vec2 uCenter4;          // 추가 원 중심
+      uniform vec2 uMouseCenter;      // 마우스 원 중심(uv 좌표계 [0,1])
       uniform float uRadius;          // 원 반경(uv 단위)
       uniform float uEdge;            // 가장자리 부드러움 폭(uv 단위)
+      uniform float uMouseRadius;     // 마우스 원 반경(uv 단위)
+      uniform vec3 uColor;            // 원 색상(RGB 0..1)
       out vec4 fragColor;             // 최종 출력 색상(RGBA)
+
+      // SDF(거리장) 기반 원 마스크 원리
+      // - 거리: d = length(uv - center)
+      // - 내부/외부 판별값: inner = radius - d (내부 양수, 경계 0, 외부 음수)
+      // - 부드러운 경계: mask = smoothstep(0.0, uEdge, inner)
+      //   * inner ≤ 0 → 0 (외부), inner ≥ uEdge → 1 (충분히 내부)
+      //   * 0..uEdge 구간은 0→1로 천천히 증가하여 페더링 효과
+      // - 합성: 여러 마스크를 더한 뒤 clamp로 0..1로 포화. 합집합만 원하면 max 사용
       void main() {
         // 반경을 시간에 따라 약간 맥동시키기(시각화 도움)
-        float radius = uRadius * (0.9 + 0.1 * sin(uTime));
-        float distToCenter = length(vUv - uCenter);
-        float inner = radius - distToCenter;         // 내부에서 양수, 외부에서 음수
-        float mask = smoothstep(0.0, uEdge, inner);  // 내부 1, 외부 0, 경계는 부드럽게
-        fragColor = vec4(vec3(mask), 1.0);           // 흑백 원 마스크
+        float radius = uRadius * (0.3 + 0.1 * sin(uTime));
+
+        // 각 중심과의 거리 계산
+        float d1 = length(vUv - uCenter1);
+        float inner1 = radius - d1;
+        // 경계 부드럽게(smoothstep)
+        float mask1 = smoothstep(0.0, uEdge, inner1);
+
+        float d2 = length(vUv - uCenter2);
+        float inner2 = radius - d2;
+        float mask2 = smoothstep(0.0, uEdge, inner2);
+
+        float d3 = length(vUv - uCenter3);
+        float inner3 = radius - d3;
+        float mask3 = smoothstep(0.0, uEdge, inner3);
+
+        float d4 = length(vUv - uCenter4);
+        float inner4 = radius - d4;
+        float mask4 = smoothstep(0.0, uEdge, inner4);
+
+        float dM = length(vUv - uMouseCenter);
+        float innerM = uMouseRadius - dM;  // 마우스 원은 고정 반경 사용
+        float maskM = smoothstep(0.0, uEdge, innerM);
+
+        // 마스크 합성 후 포화
+        float mask = mask1 + mask2 + mask3 + mask4 + maskM;
+        mask = clamp(mask, 0.0, 1.0);
+        // 색 적용: 내부는 uColor, 외부는 배경, 경계는 페더링
+        fragColor = vec4(uColor * mask, 1.0);
       }
     `;
 
@@ -224,9 +262,15 @@ export default function MetaBall2Step1() {
     // 5) 유니폼(uResolution) 지정 후 그리기
     const uResolution = gl.getUniformLocation(program, "uResolution");
     const uTime = gl.getUniformLocation(program, "uTime");
-    const uCenter = gl.getUniformLocation(program, "uCenter");
+    const uCenter1 = gl.getUniformLocation(program, "uCenter1");
+    const uCenter2 = gl.getUniformLocation(program, "uCenter2");
+    const uCenter3 = gl.getUniformLocation(program, "uCenter3");
+    const uCenter4 = gl.getUniformLocation(program, "uCenter4");
+    const uMouseCenter = gl.getUniformLocation(program, "uMouseCenter");
     const uRadius = gl.getUniformLocation(program, "uRadius");
     const uEdge = gl.getUniformLocation(program, "uEdge");
+    const uMouseRadius = gl.getUniformLocation(program, "uMouseRadius");
+    const uColor = gl.getUniformLocation(program, "uColor");
     uTimeRef.current = uTime;
     // 캔버스의 렌더 타깃 해상도(픽셀). DPR 반영된 canvas.width/height 사용 (현재 FS에 없을 수 있어 가드)
     if (uResolution) {
@@ -235,10 +279,30 @@ export default function MetaBall2Step1() {
     if (uTime) {
       gl.uniform1f(uTime, 0.0);
     }
-    // 원 파라미터 기본값 설정: 정중앙, 반경 0.25, 에지 폭 0.01
-    if (uCenter) gl.uniform2f(uCenter, 0.5, 0.5);
+    // 원 파라미터 기본값 설정: 좌/우 두 개의 원 중심, 공통 반경과 에지 폭
+    if (uCenter1) gl.uniform2f(uCenter1, 0.25, 0.5); // 좌측
+    if (uCenter2) gl.uniform2f(uCenter2, 0.75, 0.5); // 우측
+    if (uCenter3) gl.uniform2f(uCenter3, 0.5, 0.25); // 좌측
+    if (uCenter4) gl.uniform2f(uCenter4, 0.5, 0.75); // 우측
     if (uRadius) gl.uniform1f(uRadius, 0.5);
-    if (uEdge) gl.uniform1f(uEdge, 0.1);
+    if (uEdge) gl.uniform1f(uEdge, 0.2);
+    if (uMouseRadius) gl.uniform1f(uMouseRadius, 0.12); // 마우스 원 고정 반경(uv)
+    if (uColor) gl.uniform3f(uColor, 0.2, 0.8, 1.0); // 기본 색상: 하늘색 계열
+    if (uMouseCenter) gl.uniform2f(uMouseCenter, 0.5, 0.5);
+
+    // 마우스 이동에 따라 uMouseCenter를 UV 좌표로 갱신
+    const handlePointerMove = (ev: PointerEvent) => {
+      const rectNow = canvas.getBoundingClientRect();
+      const x = (ev.clientX - rectNow.left) / rectNow.width;
+      const y = (ev.clientY - rectNow.top) / rectNow.height;
+      const uvX = Math.min(Math.max(x, 0), 1);
+      const uvY = 1.0 - Math.min(Math.max(y, 0), 1); // DOM Y↓ → UV Y↑ 변환
+      const ctx = glRef.current;
+      if (ctx && uMouseCenter) {
+        ctx.uniform2f(uMouseCenter, uvX, uvY);
+      }
+    };
+    canvas.addEventListener('pointermove', handlePointerMove);
 
     // 6) 애니메이션 루프: uTime을 업데이트하며 매 프레임 그리기
     startTimeRef.current = performance.now();
@@ -259,6 +323,7 @@ export default function MetaBall2Step1() {
     //    참고: 캔버스 크기가 동적으로 변한다면, viewport와 uResolution을 다시 설정해야 합니다.
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      canvas.removeEventListener('pointermove', handlePointerMove);
       gl.deleteBuffer(positionBuffer);
       gl.deleteProgram(program);
       programRef.current = null;
@@ -268,11 +333,9 @@ export default function MetaBall2Step1() {
   }, [canvasRef]);
 
   return (
-    <div className="p-4">
-      <canvas
-        ref={canvasRef}
-        className="block w-full h-full rounded border border-neutral-700 bg-neutral-900"
-      />
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="block w-full h-full rounded border border-neutral-700 bg-neutral-900"
+    />
   );
 }
