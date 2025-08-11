@@ -13,6 +13,13 @@ export default function MetaBall2Step1() {
   });
 
   useEffect(() => {
+    // 애니메이션/리소스 관리용 레퍼런스
+    const glRef = { current: null as WebGL2RenderingContext | null };
+    const programRef = { current: null as WebGLProgram | null };
+    const uTimeRef = { current: null as WebGLUniformLocation | null };
+    const rafRef = { current: 0 };
+    const startTimeRef = { current: 0 };
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -45,11 +52,14 @@ export default function MetaBall2Step1() {
     // WebGL2 컨텍스트 획득
     //  - WebGL1과 차이: 셰이더 문법이 GLSL ES 3.00(#version 300 es), attribute/varying → in/out
     //  - 대부분의 최신 브라우저는 지원. 미지원이면 조용히 종료(필요시 webgl1 폴백 가능)
-    const gl = canvas.getContext("webgl2", { antialias: true }) as WebGL2RenderingContext | null;
+    const gl = canvas.getContext("webgl2", {
+      antialias: true,
+    }) as WebGL2RenderingContext | null;
     if (!gl) {
       console.error("WebGL2 not supported");
       return;
     }
+    glRef.current = gl;
 
     // [viewport]
     //  - 정규화 장치 좌표(NDC: -1..1)를 실제 픽셀 좌표로 매핑할 사각형 영역입니다.
@@ -106,7 +116,10 @@ export default function MetaBall2Step1() {
     const vertexSrc = `#version 300 es
       // in: 버텍스 셰이더로 들어오는 정점별 입력. JS에서 gl.vertexAttribPointer로 버퍼와 연결됩니다.
       in vec2 aPosition; // 정점(클립공간) 좌표 (WebGL2: attribute → in)
+      out vec2 vUv;      // 프래그먼트로 보간되어 전달될 UV
       void main() {
+        // [-1,1] 범위의 정점 좌표를 [0,1] 범위로 변환해 전달
+        vUv = aPosition * 0.5 + 0.5;
         gl_Position = vec4(aPosition, 0.0, 1.0);
       }
     `;
@@ -115,16 +128,19 @@ export default function MetaBall2Step1() {
     //   여기서는 모든 픽셀을 동일한 uColor로 채웁니다.
     const fragmentSrc = `#version 300 es
       precision mediump float;
-      // uniform: 드로우 동안 모든 프래그먼트에서 동일한 값
-      uniform vec2 uResolution;       // 캔버스의 실제 픽셀 해상도(width, height)
-      // out: 이 셰이더(프래그먼트)의 최종 출력 색. 렌더 타깃(프레임버퍼)로 기록됩니다.
-      out vec4 fragColor;             // WebGL2: gl_FragColor 대신 사용자 정의 출력
+      in vec2 vUv;                    // 버텍스에서 넘어온 보간된 UV([0,1])
+      uniform float uTime;            // 시간(초)
+      uniform vec2 uCenter;           // 원 중심(uv 좌표계 [0,1])
+      uniform float uRadius;          // 원 반경(uv 단위)
+      uniform float uEdge;            // 가장자리 부드러움 폭(uv 단위)
+      out vec4 fragColor;             // 최종 출력 색상(RGBA)
       void main() {
-        // gl_FragCoord.xy: 현재 프래그먼트의 픽셀 좌표(좌하단이 (0,0))
-        // 화면 크기로 나눠 0..1로 정규화 → 왼쪽(0)→오른쪽(1), 아래(0)→위(1)
-        //  주의: CSS 좌표계는 보통 좌상단(0,0) 기준이지만, 여기서는 좌하단이 기준입니다.
-        vec2 uv = gl_FragCoord.xy / uResolution;
-        fragColor = vec4(uv, 0.0, 1.0); // 위치에 따라 R,G가 변하는 그라디언트
+        // 반경을 시간에 따라 약간 맥동시키기(시각화 도움)
+        float radius = uRadius * (0.9 + 0.1 * sin(uTime));
+        float distToCenter = length(vUv - uCenter);
+        float inner = radius - distToCenter;         // 내부에서 양수, 외부에서 음수
+        float mask = smoothstep(0.0, uEdge, inner);  // 내부 1, 외부 0, 경계는 부드럽게
+        fragColor = vec4(vec3(mask), 1.0);           // 흑백 원 마스크
       }
     `;
 
@@ -135,14 +151,17 @@ export default function MetaBall2Step1() {
       gl.shaderSource(shader, source);
       gl.compileShader(shader);
       if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-        const log = gl.getShaderInfoLog(shader) ?? '';
+        const log = gl.getShaderInfoLog(shader) ?? "";
         gl.deleteShader(shader);
         throw new Error(`Shader compile failed: ${log}`);
       }
       return shader;
     };
 
-    const createProgram = (vsSource: string, fsSource: string): WebGLProgram => {
+    const createProgram = (
+      vsSource: string,
+      fsSource: string
+    ): WebGLProgram => {
       // createProgram: 컴파일된 버텍스/프래그먼트 셰이더를 하나의 실행 단위(Program)로 링크합니다.
       // 1) 각 셰이더 컴파일 → 2) program 생성 및 attach → 3) link → 4) 링크 상태 확인
       //    링크가 끝나면 개별 셰이더 객체는 삭제해도 program 내부에 바이너리로 포함되어 안전합니다.
@@ -156,7 +175,7 @@ export default function MetaBall2Step1() {
       gl.deleteShader(vs);
       gl.deleteShader(fs);
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        const log = gl.getProgramInfoLog(program) ?? '';
+        const log = gl.getProgramInfoLog(program) ?? "";
         gl.deleteProgram(program);
         throw new Error(`Program link failed: ${log}`);
       }
@@ -166,6 +185,7 @@ export default function MetaBall2Step1() {
     // 2) 프로그램 생성/사용
     const program = createProgram(vertexSrc, fragmentSrc);
     gl.useProgram(program);
+    programRef.current = program;
 
     // 3) 풀스크린 정점 데이터 준비(NDC에서 사각형)
     // - NDC: x,y ∈ [-1, 1] 범위면 전체 화면을 덮습니다.
@@ -173,12 +193,7 @@ export default function MetaBall2Step1() {
     //   정점 순서(인덱스 기준):
     //     v0(-1,-1), v1(1,-1), v2(-1,1), v3(1,1)
     //   생성 삼각형: (v0,v1,v2), (v2,v1,v3)
-    const positions = new Float32Array([
-      -1, -1,
-       1, -1,
-      -1,  1,
-       1,  1,
-    ]);
+    const positions = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
     const positionBuffer = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
@@ -195,11 +210,11 @@ export default function MetaBall2Step1() {
     //       stride: 0 → 한 정점당 바이트 간격(0은 "타이트하게 연속")
     //       offset: 0 → 버퍼 시작 오프셋
     //   이렇게 설정하면 드로우 시 "각 정점마다" 버퍼에서 2개의 float를 읽어 aPosition에 공급합니다.
-    const aPosition = gl.getAttribLocation(program, 'aPosition');
+    const aPosition = gl.getAttribLocation(program, "aPosition");
     gl.enableVertexAttribArray(aPosition);
     gl.vertexAttribPointer(
       aPosition,
-      2,          // vec2
+      2, // vec2
       gl.FLOAT,
       false,
       0,
@@ -207,19 +222,48 @@ export default function MetaBall2Step1() {
     );
 
     // 5) 유니폼(uResolution) 지정 후 그리기
-    const uResolution = gl.getUniformLocation(program, 'uResolution');
-    // 캔버스의 렌더 타깃 해상도(픽셀). DPR 반영된 canvas.width/height 사용
-    gl.uniform2f(uResolution, canvas.width, canvas.height);
+    const uResolution = gl.getUniformLocation(program, "uResolution");
+    const uTime = gl.getUniformLocation(program, "uTime");
+    const uCenter = gl.getUniformLocation(program, "uCenter");
+    const uRadius = gl.getUniformLocation(program, "uRadius");
+    const uEdge = gl.getUniformLocation(program, "uEdge");
+    uTimeRef.current = uTime;
+    // 캔버스의 렌더 타깃 해상도(픽셀). DPR 반영된 canvas.width/height 사용 (현재 FS에 없을 수 있어 가드)
+    if (uResolution) {
+      gl.uniform2f(uResolution, canvas.width, canvas.height);
+    }
+    if (uTime) {
+      gl.uniform1f(uTime, 0.0);
+    }
+    // 원 파라미터 기본값 설정: 정중앙, 반경 0.25, 에지 폭 0.01
+    if (uCenter) gl.uniform2f(uCenter, 0.5, 0.5);
+    if (uRadius) gl.uniform1f(uRadius, 0.5);
+    if (uEdge) gl.uniform1f(uEdge, 0.1);
 
-    // 6) 드로우 호출: TRIANGLE_STRIP으로 정점 4개를 사용
-    //    정점 4개로 두 개의 삼각형을 연속 생성하여 사각형 전체를 채웁니다(삼각형 조립은 GPU가 수행).
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // 6) 애니메이션 루프: uTime을 업데이트하며 매 프레임 그리기
+    startTimeRef.current = performance.now();
+    const frame = (now: number) => {
+      const ctx = glRef.current;
+      if (!ctx) return;
+      const elapsed = (now - startTimeRef.current) / 1000.0; // 초 단위
+      if (uTimeRef.current) {
+        ctx.uniform1f(uTimeRef.current, elapsed);
+      }
+      ctx.clear(ctx.COLOR_BUFFER_BIT);
+      ctx.drawArrays(ctx.TRIANGLE_STRIP, 0, 4);
+      rafRef.current = requestAnimationFrame(frame);
+    };
+    rafRef.current = requestAnimationFrame(frame);
 
     // 7) 리소스 정리(라우트 언마운트 시)
     //    참고: 캔버스 크기가 동적으로 변한다면, viewport와 uResolution을 다시 설정해야 합니다.
     return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       gl.deleteBuffer(positionBuffer);
       gl.deleteProgram(program);
+      programRef.current = null;
+      glRef.current = null;
+      uTimeRef.current = null;
     };
   }, [canvasRef]);
 
@@ -227,7 +271,7 @@ export default function MetaBall2Step1() {
     <div className="p-4">
       <canvas
         ref={canvasRef}
-        className="block w-[800px] h-[500px] rounded border border-neutral-700 bg-neutral-900"
+        className="block w-full h-full rounded border border-neutral-700 bg-neutral-900"
       />
     </div>
   );
