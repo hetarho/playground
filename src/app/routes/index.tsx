@@ -59,6 +59,22 @@ function Index() {
           </div>
         </Link>
 
+        {/* Aurora 데모 */}
+        <Link
+          to="/aurora"
+          className="block p-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+        >
+          <h2 className="text-2xl font-semibold text-white mb-3">
+            오로라 효과
+          </h2>
+          <p className="text-indigo-100 mb-4">
+            노이즈를 사용하여 만든 은은하게 일렁이는 오로라 효과
+          </p>
+          <div className="text-sm text-indigo-200">
+            ✨ WebGL Shaders • Noise • Generative Art
+          </div>
+        </Link>
+
         {/* About 페이지 */}
         <Link
           to="/gilt-bronze-incense-burner"

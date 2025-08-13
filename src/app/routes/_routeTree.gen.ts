@@ -15,6 +15,7 @@ import { Route as MetaballRouteImport } from './metaball'
 import { Route as GradientRouteImport } from './gradient'
 import { Route as GiltBronzeIncenseBurnerRouteImport } from './gilt-bronze-incense-burner'
 import { Route as CanvasRouteImport } from './canvas'
+import { Route as AuroraRouteImport } from './aurora'
 import { Route as AboutRouteImport } from './about'
 import { Route as IndexRouteImport } from './index'
 
@@ -48,6 +49,11 @@ const CanvasRoute = CanvasRouteImport.update({
   path: '/canvas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuroraRoute = AuroraRouteImport.update({
+  id: '/aurora',
+  path: '/aurora',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AboutRoute = AboutRouteImport.update({
   id: '/about',
   path: '/about',
@@ -62,6 +68,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/aurora': typeof AuroraRoute
   '/canvas': typeof CanvasRoute
   '/gilt-bronze-incense-burner': typeof GiltBronzeIncenseBurnerRoute
   '/gradient': typeof GradientRoute
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/aurora': typeof AuroraRoute
   '/canvas': typeof CanvasRoute
   '/gilt-bronze-incense-burner': typeof GiltBronzeIncenseBurnerRoute
   '/gradient': typeof GradientRoute
@@ -83,6 +91,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/aurora': typeof AuroraRoute
   '/canvas': typeof CanvasRoute
   '/gilt-bronze-incense-burner': typeof GiltBronzeIncenseBurnerRoute
   '/gradient': typeof GradientRoute
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/aurora'
     | '/canvas'
     | '/gilt-bronze-incense-burner'
     | '/gradient'
@@ -105,6 +115,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/aurora'
     | '/canvas'
     | '/gilt-bronze-incense-burner'
     | '/gradient'
@@ -115,6 +126,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/about'
+    | '/aurora'
     | '/canvas'
     | '/gilt-bronze-incense-burner'
     | '/gradient'
@@ -126,6 +138,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AuroraRoute: typeof AuroraRoute
   CanvasRoute: typeof CanvasRoute
   GiltBronzeIncenseBurnerRoute: typeof GiltBronzeIncenseBurnerRoute
   GradientRoute: typeof GradientRoute
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CanvasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/aurora': {
+      id: '/aurora'
+      path: '/aurora'
+      fullPath: '/aurora'
+      preLoaderRoute: typeof AuroraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/about': {
       id: '/about'
       path: '/about'
@@ -198,6 +218,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AuroraRoute: AuroraRoute,
   CanvasRoute: CanvasRoute,
   GiltBronzeIncenseBurnerRoute: GiltBronzeIncenseBurnerRoute,
   GradientRoute: GradientRoute,
