@@ -53,7 +53,7 @@ const fragmentShaderSource = `
 
 function GradientPage() {
   const { canvasRef } = useCanvas({ mode: "3d" });
-  const animationFrameId = useRef<number>();
+  const animationFrameId = useRef<number | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
