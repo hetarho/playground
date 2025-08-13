@@ -14,7 +14,7 @@ const vertexShaderSource = `
 `;
 
 const fragmentShaderSource = `
-  precision mediump float;
+  precision highp float;
   uniform vec2 u_resolution;
   uniform float u_time;
 
@@ -44,7 +44,7 @@ const fragmentShaderSource = `
               (d - b) * u.x * u.y;
   }
 
-  #define NUM_OCTAVES 5
+  #define NUM_OCTAVES 3
 
   float fbm ( in vec2 _st) {
       float v = 0.0;
