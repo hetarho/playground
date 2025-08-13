@@ -124,61 +124,44 @@ export default function MetaBall2Step1() {
       }
     `;
 
-    // - [프래그먼트 셰이더] 래스터화된 각 프래그먼트(픽셀 후보)에 대해 최종 색을 출력합니다.
-    //   여기서는 모든 픽셀을 동일한 uColor로 채웁니다.
+    // - [프래그먼트 셰이더] 배열 기반(for문)으로 원들을 처리합니다.
     const fragmentSrc = `#version 300 es
       precision mediump float;
       in vec2 vUv;                    // 버텍스에서 넘어온 보간된 UV([0,1])
       uniform float uTime;            // 시간(초)
-      uniform vec2 uCenter1;          // 왼쪽 원 중심(uv 좌표계 [0,1])
-      uniform vec2 uCenter2;          // 오른쪽 원 중심(uv 좌표계 [0,1])
-      uniform vec2 uCenter3;          // 추가 원 중심
-      uniform vec2 uCenter4;          // 추가 원 중심
-      uniform vec2 uMouseCenter;      // 마우스 원 중심(uv 좌표계 [0,1])
-      uniform float uRadius;          // 원 반경(uv 단위)
+      uniform vec2 uResolution;       // 캔버스 해상도(픽셀)
       uniform float uEdge;            // 가장자리 부드러움 폭(uv 단위)
-      uniform float uMouseRadius;     // 마우스 원 반경(uv 단위)
-      uniform vec3 uColor;            // 원 색상(RGB 0..1)
-      out vec4 fragColor;             // 최종 출력 색상(RGBA)
+      
+      const int MAX_BALLS = 8;
+      uniform int uBallCount;                     // 실제 사용할 원의 개수
+      uniform vec2 uCenters[MAX_BALLS];           // 각 원의 중심 (uv)
+      uniform vec3 uColors[MAX_BALLS];            // 각 원의 색상 (RGB)
+      uniform float uRadii[MAX_BALLS];            // 각 원의 반경 (uv)
+      
+      out vec4 fragColor;                         // 최종 출력 색상(RGBA)
 
-      // SDF(거리장) 기반 원 마스크 원리
-      // - 거리: d = length(uv - center)
-      // - 내부/외부 판별값: inner = radius - d (내부 양수, 경계 0, 외부 음수)
-      // - 부드러운 경계: mask = smoothstep(0.0, uEdge, inner)
-      //   * inner ≤ 0 → 0 (외부), inner ≥ uEdge → 1 (충분히 내부)
-      //   * 0..uEdge 구간은 0→1로 천천히 증가하여 페더링 효과
-      // - 합성: 여러 마스크를 더한 뒤 clamp로 0..1로 포화. 합집합만 원하면 max 사용
       void main() {
-        // 반경을 시간에 따라 약간 맥동시키기(시각화 도움)
-        float radius = uRadius * (0.3 + 0.1 * sin(uTime));
+        vec3 accumColor = vec3(0.0);
+        float accumMask = 0.0;
+        float prodInv = 1.0; // 유니온 마스크 계산을 위한 Π(1 - mask)
 
-        // 각 중심과의 거리 계산
-        float d1 = length(vUv - uCenter1);
-        float inner1 = radius - d1;
-        // 경계 부드럽게(smoothstep)
-        float mask1 = smoothstep(0.0, uEdge, inner1);
+        for (int i = 0; i < MAX_BALLS; i++) {
+          if (i >= uBallCount) break;
+          float radiusBase = uRadii[i];
+          float pulsate = 0.3 + 0.2 * sin(uTime);
+          int lastIdx = uBallCount - 1;
+          float radius = (i == lastIdx) ? radiusBase : (radiusBase * pulsate);
+          float d = length(vUv - uCenters[i]);
+          float mask = smoothstep(0.0, uEdge, radius - d);
+          accumColor += uColors[i] * mask;
+          accumMask += mask;
+          prodInv *= (1.0 - mask);
+        }
 
-        float d2 = length(vUv - uCenter2);
-        float inner2 = radius - d2;
-        float mask2 = smoothstep(0.0, uEdge, inner2);
-
-        float d3 = length(vUv - uCenter3);
-        float inner3 = radius - d3;
-        float mask3 = smoothstep(0.0, uEdge, inner3);
-
-        float d4 = length(vUv - uCenter4);
-        float inner4 = radius - d4;
-        float mask4 = smoothstep(0.0, uEdge, inner4);
-
-        float dM = length(vUv - uMouseCenter);
-        float innerM = uMouseRadius - dM;  // 마우스 원은 고정 반경 사용
-        float maskM = smoothstep(0.0, uEdge, innerM);
-
-        // 마스크 합성 후 포화
-        float mask = mask1 + mask2 + mask3 + mask4 + maskM;
-        mask = clamp(mask, 0.0, 1.0);
-        // 색 적용: 내부는 uColor, 외부는 배경, 경계는 페더링
-        fragColor = vec4(uColor * mask, 1.0);
+        float unionMask = 1.0 - prodInv;          // 1 - Π(1 - mask)
+        vec3 blended = (accumMask > 0.0) ? (accumColor / accumMask) : vec3(0.0);
+        vec3 finalColor = blended * unionMask;
+        fragColor = vec4(finalColor, 1.0);
       }
     `;
 
@@ -259,18 +242,14 @@ export default function MetaBall2Step1() {
       0
     );
 
-    // 5) 유니폼(uResolution) 지정 후 그리기
+    // 5) 유니폼(uResolution) 지정 후 그리기 (배열 기반)
     const uResolution = gl.getUniformLocation(program, "uResolution");
     const uTime = gl.getUniformLocation(program, "uTime");
-    const uCenter1 = gl.getUniformLocation(program, "uCenter1");
-    const uCenter2 = gl.getUniformLocation(program, "uCenter2");
-    const uCenter3 = gl.getUniformLocation(program, "uCenter3");
-    const uCenter4 = gl.getUniformLocation(program, "uCenter4");
-    const uMouseCenter = gl.getUniformLocation(program, "uMouseCenter");
-    const uRadius = gl.getUniformLocation(program, "uRadius");
     const uEdge = gl.getUniformLocation(program, "uEdge");
-    const uMouseRadius = gl.getUniformLocation(program, "uMouseRadius");
-    const uColor = gl.getUniformLocation(program, "uColor");
+    const uBallCount = gl.getUniformLocation(program, "uBallCount");
+    const uCenters0 = gl.getUniformLocation(program, "uCenters[0]");
+    const uColors0 = gl.getUniformLocation(program, "uColors[0]");
+    const uRadii0 = gl.getUniformLocation(program, "uRadii[0]");
     uTimeRef.current = uTime;
     // 캔버스의 렌더 타깃 해상도(픽셀). DPR 반영된 canvas.width/height 사용 (현재 FS에 없을 수 있어 가드)
     if (uResolution) {
@@ -279,18 +258,31 @@ export default function MetaBall2Step1() {
     if (uTime) {
       gl.uniform1f(uTime, 0.0);
     }
-    // 원 파라미터 기본값 설정: 좌/우 두 개의 원 중심, 공통 반경과 에지 폭
-    if (uCenter1) gl.uniform2f(uCenter1, 0.25, 0.5); // 좌측
-    if (uCenter2) gl.uniform2f(uCenter2, 0.75, 0.5); // 우측
-    if (uCenter3) gl.uniform2f(uCenter3, 0.5, 0.25); // 좌측
-    if (uCenter4) gl.uniform2f(uCenter4, 0.5, 0.75); // 우측
-    if (uRadius) gl.uniform1f(uRadius, 0.5);
+    // 배열 유니폼 초기값 설정
+    const centers = new Float32Array([
+      0.25, 0.5,
+      0.75, 0.5,
+      0.5,  0.25,
+      0.5,  0.75,
+      0.5,  0.5,  // 마우스 초기 위치
+    ]);
+    const colors = new Float32Array([
+      0.20, 0.80, 1.00, // 시안
+      1.00, 0.55, 0.20, // 오렌지
+      0.60, 0.90, 0.40, // 라임
+      0.90, 0.40, 0.85, // 마젠타
+      1.00, 0.95, 0.60, // 밝은 노랑(마우스)
+    ]);
+    const radii = new Float32Array([
+      0.7, 0.7, 0.7, 0.7, 0.2
+    ]);
+    if (uBallCount) gl.uniform1i(uBallCount, 5);
     if (uEdge) gl.uniform1f(uEdge, 0.2);
-    if (uMouseRadius) gl.uniform1f(uMouseRadius, 0.12); // 마우스 원 고정 반경(uv)
-    if (uColor) gl.uniform3f(uColor, 0.2, 0.8, 1.0); // 기본 색상: 하늘색 계열
-    if (uMouseCenter) gl.uniform2f(uMouseCenter, 0.5, 0.5);
+    if (uCenters0) gl.uniform2fv(uCenters0, centers);
+    if (uColors0) gl.uniform3fv(uColors0, colors);
+    if (uRadii0) gl.uniform1fv(uRadii0, radii);
 
-    // 마우스 이동에 따라 uMouseCenter를 UV 좌표로 갱신
+    // 마우스 이동에 따라 마지막 센터(인덱스 4)를 UV 좌표로 갱신
     const handlePointerMove = (ev: PointerEvent) => {
       const rectNow = canvas.getBoundingClientRect();
       const x = (ev.clientX - rectNow.left) / rectNow.width;
@@ -298,8 +290,10 @@ export default function MetaBall2Step1() {
       const uvX = Math.min(Math.max(x, 0), 1);
       const uvY = 1.0 - Math.min(Math.max(y, 0), 1); // DOM Y↓ → UV Y↑ 변환
       const ctx = glRef.current;
-      if (ctx && uMouseCenter) {
-        ctx.uniform2f(uMouseCenter, uvX, uvY);
+      if (ctx && uCenters0) {
+        centers[8] = uvX;
+        centers[9] = uvY;
+        ctx.uniform2fv(uCenters0, centers);
       }
     };
     canvas.addEventListener('pointermove', handlePointerMove);
